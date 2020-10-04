@@ -50,7 +50,8 @@ OUTPUT_CORPUS_FILE_TRG = "sec_10k_docs.textcorpus.trg"  # this is our output fil
 OUTPUT_CORPUS_FILE_TST = "sec_10k_docs.textcorpus.tst"  # this is our output file generated for testing
 
 ###############################################
-# This class returns responses to the queries.
+# This class builds a clean text corpus for training
+# and evaluating a language model (BERT) on MLM task.
 ###############################################
 class BuildTextCorpusForTraining:
     def __init__(self, logLevel, corpusFolder, outFolder):
