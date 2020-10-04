@@ -15,7 +15,7 @@ directory = os.fsencode(directory_in_str)
 
 def preprocess():
     for fil in os.listdir(directory):
-
+        #Adding to demo commit process
         flist = []
         filename = os.fsdecode(fil)
         file = open("/Users/skosgi/Downloads/10k_1900_org_sample/"+filename,'r')
@@ -75,8 +75,6 @@ def preprocess():
                         flist.append(fi)
 
         print(flist)    #To be added: Write to a file
-
-
 
 
 preprocess()
