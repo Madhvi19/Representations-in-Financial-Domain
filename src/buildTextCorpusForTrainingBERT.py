@@ -350,8 +350,8 @@ if __name__ == "__main__":
                                 log.debug("Initializing a new process in the range: [{0}:{1}]".format(docsRange[i], totalDocs))
                                 futures.append(executor.submit(buildTextCorpusPartial, logLevel, _corpusFolder, _outFolder, docsRange[i], totalDocs))
                         try:
-                            # Timeout after 600 seconds
-                            for future in concurrent.futures.as_completed(futures,1200):  # set timeout to 1200 seconds (20 minutes)
+                            # Timeout after 1 hour
+                            for future in concurrent.futures.as_completed(futures,3600):  # set timeout to 3600 seconds (1 hour)
                                 success, startIndx, endIndx = future.result()
                                 if success is not True:
                                     log.error("Error building output text corpus for the 10-k document range [{0}:{1}].".format(startIndx, endIndx))
