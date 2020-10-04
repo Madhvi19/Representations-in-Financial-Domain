@@ -105,6 +105,40 @@ def preprocess():
                                 print("Converted from",money,act_money*money_conv)
                             except:
                                 continue # if any exception dont modify the original sentence and continue
+                if  X.label_ == 'LAW':   
+                    new_X = X.text
+                    new_X = re.sub(r'[\d.!?\-"]', '', new_X)
+                    if 'the' in new_X.lower():    
+                        new_X = new_X.lower().replace('the','')
+                    if 'of' in new_X.lower():
+                        new_X = new_X.lower().replace('of','')
+                    if 'section' in new_X.lower():
+                        new_X = new_X.lower().replace('section','')
+                    new_X = new_X.replace(" ","")
+                    f = f.replace(X.text, new_X)
+                    nermap[new_X] = X.text
+                if X.label_ == 'GPE':
+                    new_X = X.text.lower()
+                    new_X = re.sub(r'[\d.!?\-"]', '', new_X)
+                    if 'the' in new_X.lower(): 
+                        new_X = new_X.lower().replace('the','')
+                    if '.' in new_X.lower():
+                        new_X = new_X.lower().replace('.','')
+                    new_X = new_X.replace(" ","")
+                    f = f.replace(X.text, new_X)
+                    #print(new_X, X.label_)
+                    nermap[new_X] = X.text
+                if X.label_ == 'PERSON':
+                    new_X = X.text.lower()
+                    new_X = re.sub(r'[\d.!?/\-"]', '', new_X)
+                    new_X = re.sub(r'\s', '', new_X)
+                    new_X = re.sub(r's$', '', new_X)
+                    if '.' in new_X.lower():
+                        new_X = new_X.lower().replace('.','')
+                    new_X = new_X.replace(" ","")
+                    f = f.replace(X.text, new_X)
+                    #print(new_X, X.label_)
+                    nermap[new_X] = X.text
             #To be changed: Start of preprocessing to sentences after applying NER
             if len(f)>0:
                 fl = clean_data(f)
