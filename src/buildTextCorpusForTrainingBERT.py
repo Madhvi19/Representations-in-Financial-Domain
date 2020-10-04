@@ -57,7 +57,7 @@ class BuildTextCorpusForTraining:
     def __init__(self, logLevel, corpusFolder, outFolder):
         #########################################################################################
         # This method is class initialzer that inits several instance level variables,
-        # including global lock object from the concurrent.features manager object.
+        # including global lock object from the threading module.
         #########################################################################################
 
         # Set the log level for logger in the class also, as when a user warning is thrown by
