@@ -3,27 +3,24 @@
 
 # In[1]:
 
-import torchvision
-
-import spacy
-from spacy import displacy
-from collections import Counter
-import en_core_web_sm
+import concurrent
 import contractions
-import sys
+import en_core_web_sm
 import logging as log
+import multiprocessing
 import pickle
-nlp = en_core_web_sm.load()
-from word2number import w2n
+import spacy
+import sys
 import os
 import re
-from Stemmer import Stemmer
-from nltk.corpus import stopwords
-import multiprocessing
-import concurrent
+import threading
 import time
+from collections import Counter
+from nltk.corpus import stopwords
 from nltk import PorterStemmer
-
+from spacy import displacy
+from Stemmer import Stemmer
+from word2number import w2n
 
 global NUM_CPUs, MULTIPLY_FACTOR, INPUT_CORPUS_FILE
 NUM_CPUs = multiprocessing.cpu_count()
@@ -31,13 +28,16 @@ MULTIPLY_FACTOR = 1
 
 Stemmer = Stemmer('english')
 stemmer = PorterStemmer()
-docNames = {}
+
 StopWords = set(stopwords.words("english"))
 extension = set(["http", "https", "reflist", "yes","curlie","publish","page", "isbn", "file", "jpg", "websit", "cite", "title", "journal","publication", "name", "www","url","link", "ftp", "com", "net", "org", "archives", "pdf", "html", "png", "txt", "redirect", "align", "realign", "valign", "nonalign", "malign", "unalign", "salign", "qalign", "halign", "font", "fontsiz", "fontcolor", "backgroundcolor", "background", "style", "center", "text"])
 
+nlp = en_core_web_sm.load()
 
 pickfile = open('tickermapping.pickle','rb')
 tickermapping = pickle.load(pickfile)
+
+docNames = {}
 
 def setLogLevel(level):
     ###############################################################################################
@@ -254,41 +254,65 @@ def __applyner(sequence):
     return sequence,ner_tags
 
 def preprocess(directory_in_str,out_directory,docStartIndex,docEndIndex):
-    global docNames
+    #global docNames
     directory = os.fsencode(directory_in_str)
     partialList = os.listdir(directory)[docStartIndex:docEndIndex]
     previous_line = ""
+    startTime = time.time()
+    lock = threading.Lock()
     for fil in partialList:
-        filename = os.fsdecode(fil)
-        cleanfile = open(out_directory+filename,'w')
-        file = open(directory_in_str+filename,'r')
-        HeaderFound = False
-        for f in file:
-            f = f[:-1]
-            if("<FileName>" in f):
-                print(f)
-                docNames[filename] = (f.split('>')[1].split("<")[0])
-            if "</Header>" in f:  #Read lines only after occurance of </Header>
-                HeaderFound = True
-                continue
-            if HeaderFound==False:
-                continue
-            #Apply NER for the line
-            f,ner_tags = __applyner(f)
-            #To be changed: Start of preprocessing to sentences after applying NER
-            if len(f)>0:
-                tokens = __clean_data(f,ner_tags)
-                if len(tokens)>0:
-                    linestr = ""
-                    for token in tokens:
-                        linestr += token + " "
-                    #print(linestr)
-                    if previous_line != linestr:
-                        previous_line = linestr
-                        cleanfile.write(linestr+"\n")
+        try:
+            filename = os.fsdecode(fil)
+            #cleanfile = open(os.path.join(out_directory, filename),'w')
+            #file = open(os.path.join(directory_in_str, filename),'r')
+            with open(os.path.join(directory_in_str, filename), 'r') as file:
+                cleanLines = []
+                HeaderFound = False
+                log.info(f"Pre-processing file {filename}..")
+                for line in file:
+                    line = line[:-1]
+                    if("<FileName>" in line):
+                        print(line)
+                        #docNames[filename] = (line.split('>')[1].split("<")[0])
 
-        cleanfile.close()
-    print("Writing to clean files is done by one processor")
+                    # Read lines only after occurance of </Header>
+                    if "</Header>" in line:
+                        HeaderFound = True
+                        continue
+                    if HeaderFound==False:
+                        continue
+
+                    # Apply NER for the line
+                    line,ner_tags = __applyner(line)
+
+                    # Apply other pre-processing methods
+                    if len(line)>0:
+                        tokens = __clean_data(line,ner_tags)
+                        if len(tokens)>0:
+                            linestr = ""
+                            for token in tokens:
+                                linestr += token + " "
+                            #print(linestr)
+                            if previous_line != linestr:
+                                previous_line = linestr
+                                lock.acquire()
+                                cleanLines.append(linestr + "\n")
+                                lock.release()
+                                #cleanfile.write(linestr+"\n")
+                with open(os.path.join(out_directory, filename),'w') as cleanfile:
+                    lock.acquire()
+                    cleanfile.writelines(cleanLines)
+                    lock.release()
+                #cleanfile.close()
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            err = "Error occurred while pre-processing 10-k files in the range [{0}:{1}]. Error is: {2}; {3}".format(docStartIndex, docEndIndex, str(exc_type), str(exc_value))
+            log.error(err)
+            continue
+
+    return True, docStartIndex, docEndIndex
+    log.info(f"Writing pre-processed files to the clean out folder '{out_directory}' completed for ALL the documents in the range [{docStartIndex}:{docEndIndex}].")
+    log.info(f"It took {round((time.time() - startTime) / 60, 0)} minutes to pre-process the files in the range [{docStartIndex}:{docEndIndex}].")
 
 
 if __name__ == "__main__":
@@ -312,11 +336,10 @@ if __name__ == "__main__":
                 if not docs:
                     print("There are NO documents in the corpus folder '{0}'!".format(_corpusFolder))
                 else:
-                    level = "E"  # default to log.ERROR
+                    logLevel = "E"  # default to log.ERROR
                     if len(sys.argv) == 4:
                         logLevel = sys.argv[3]  # over default log level as set by the user
                     setLogLevel(logLevel)
-
 
                     totalDocs = len(docs)
                     docsRange = []
