@@ -1,3 +1,5 @@
 word2number
 spacy
 en_core_web_sm
+pickle5
+glove_python
