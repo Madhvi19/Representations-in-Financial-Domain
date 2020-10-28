@@ -5,6 +5,7 @@
 
 import concurrent
 import contractions
+import concurrent.futures
 import en_core_web_sm
 import logging as log
 import multiprocessing
@@ -96,46 +97,22 @@ def __replaceurls(sequence):
         err = "Error occurred while removing HTML tags in the sequence '{0}'. Error is: {1}; {2}".format(sequence, str(exc_type), str(exc_value))
         raise Exception(err)
 
-def __removePunctuations(sequence):
+def __removePunctuations(sequence,ner_tags):
     #########################################################################################
     # This method removes any punctuations and gets only the text from the given sequence.
     #########################################################################################
     try:
         if sequence is not None and sequence.strip() != "":
-            return re.sub('[^A-Za-z0-9]+',' ',sequence)
+            if sequence in ner_tags:
+                return re.sub('[^A-Za-z0-9%$.]+',' ',sequence)
+            else:
+                return re.sub('[^A-Za-z0-9$%]+',' ',sequence)
         return sequence # return sequence as is without any changes
     except:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         err = "Error occurred while removing punctuations in the sequence '{0}'. Error is: {1}; {2}".format(sequence, str(exc_type), str(exc_value))
         raise Exception(err)
 
-def __removeStopWords(sequence):
-    #########################################################################################
-    # This method removes stop words and gets only the remaining list from the given sequence.
-    #########################################################################################
-    try:
-        return [word for word in sequence if word not in StopWords and word not in extension and bool(re.match('^(?=.*[a-zA-Z])(?=.*[0-9])', word)) ==False]
-    except:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        err = "Error occurred while removing stop words in the sequence '{0}'. Error is: {1}; {2}".format(sequence, str(exc_type), str(exc_value))
-        raise Exception(err)
-
-def __stemList(sequence,ner_tags):
-    #########################################################################################
-    # This method gets stemmed words of the words in the sequence.
-    #########################################################################################
-    try:
-        stemlist = []
-        for word in sequence:
-            if word in ner_tags:
-                stemlist.append(word)
-            else:
-                stemlist.append(stemmer.stem(word))
-        return stemlist
-    except:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        err = "Error occurred while getitng stemmed list stop words in the sequence '{0}'. Error is: {1}; {2}".format(sequence, str(exc_type), str(exc_value))
-        raise Exception(err)
 
 def __clean_data(data,ner_tags):
     #########################################################################################
@@ -146,18 +123,21 @@ def __clean_data(data,ner_tags):
     #     __replaceurls(data)
     #     __removePunctuations(data)
     #     data.split(" ")
-    #     __removeStopWords
-    #     __stemList
     #########################################################################################
-    data = data.lower()
     data = __expandContractions(data)
     data = __removeHtmlTags(data) # remove tags
-    data = __replaceurls(data)#re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', data, flags=re.MULTILINE) # remove url
-    data = __removePunctuations(data)  # remove punctuations and special characters
+    data = __replaceurls(data)
+    data = data.replace("$","$ ")
+    data = data.replace("%"," % ")
     data = data.split(" ")
-    data = __removeStopWords(data)#[word for word in data if word not in StopWords and word not in extension and bool(re.match('^(?=.*[a-zA-Z])(?=.*[0-9])', word)) ==False]
-    data = __stemList(data,ner_tags)
-    data = [d for d in data if len(d)>=2]
+    clean = []
+    for word in data:
+        w_clean = __removePunctuations(word,ner_tags)
+        clean.extend(w_clean.split(" "))
+    data = clean
+    data = [word if word.isupper() and word.lower() in ner_tags else word.lower() for word in data]
+    dollar_list = ['$','k','%']
+    data = [d for d in data if len(d)>=2 or d in dollar_list]
 #     clean_list.append(data)
     return data
 
@@ -185,8 +165,10 @@ def __applyner(sequence):
                 text = text.replace('limited', '')
             if 'corp' in text:
                 text = text.replace('corp', '')
+            if 'the' in text.lower():
+                text = text.replace('the','')
             sequence = sequence.replace(X.text, text)
-            ner_tags.extend(text.split(" "))
+            ner_tags.extend(text.lower().split(" "))
         # If NER class is MONEY
         if X.label_ == 'MONEY':
             new_X = X.text.lower()
@@ -203,20 +185,26 @@ def __applyner(sequence):
             if 'phone' in new_X:
                 continue
             # Apply NER for the string which is obtained after removing other words this gives $200, $500 as separate ones
+            if '$' not in new_X:
+                new_X = "$"+new_X
             doc1 = nlp(new_X)
             for Y in doc1.ents:
-                money = Y.text[Y.text.find("$") + 1:]
+                money = Y.text
                 if ' ' not in money:
                     act_money = money.replace(',', '')  # Actual Money
+                    #act_money = act_money.replace('.','')
                     sequence = sequence.replace(Y.text, act_money)  # Replace original money text with actual money
+                    ner_tags.append(act_money)
                     # print(act_money)
                 else:
+                    money = Y.text[Y.text.find("$") + 1:]
                     k = money.find(' ')
                     try:
                         act_money = float(money[:k].replace(',', ''))
+                        #act_money = act_money.replace('.','')
                         money_conv = w2n.word_to_num(money[k:])  # Conversion of word types million to *1e6
-                        sequence = sequence.replace(Y.text, act_money)  # Replace original money text with actual money
-                        print("Converted from", money, act_money * money_conv)
+                        sequence = sequence.replace(Y.text, "$ "+str(act_money * money_conv))  # Replace original money text with actual money
+                        #print("Converted from", money, act_money * money_conv)
                     except:
                         continue  # if any exception dont modify the original sentence and continue
         # If NER class is LAW
@@ -251,6 +239,22 @@ def __applyner(sequence):
                 new_X = new_X.lower().replace('.', '')
             sequence = sequence.replace(X.text, new_X)
             ner_tags.extend(new_X.split(" "))
+        if X.label_ == 'CARDINAL':
+            number = X.text
+            number = number.replace(',','')
+            #number = number.replace('.','')
+            if number.isnumeric():
+                sequence = sequence.replace(X.text, number)
+        if X.label_ == 'QUANTITY':
+            quantity = X.text.split(" ")
+            for number in quantity:
+                number = number.replace(',','')
+                number = number.replace('.','')
+                if number.isnumeric():
+                    sequence = sequence.replace(X.text, number)
+        if X.label_ == "PERCENT":
+            percent = X.text.replace('%','')
+            ner_tags.append(percent)
     return sequence,ner_tags
 
 def preprocess(directory_in_str,out_directory,docStartIndex,docEndIndex):
@@ -268,7 +272,7 @@ def preprocess(directory_in_str,out_directory,docStartIndex,docEndIndex):
             with open(os.path.join(directory_in_str, filename), 'r') as file:
                 cleanLines = []
                 HeaderFound = False
-                log.info(f"Pre-processing file {filename}..")
+                log.info(f"Pre-processing file  {filename}..")
                 for line in file:
                     line = line[:-1]
                     if("<FileName>" in line):
@@ -281,7 +285,7 @@ def preprocess(directory_in_str,out_directory,docStartIndex,docEndIndex):
                         continue
                     if HeaderFound==False:
                         continue
-
+                    line = line.replace("$.","$0.")
                     # Apply NER for the line
                     line,ner_tags = __applyner(line)
 
