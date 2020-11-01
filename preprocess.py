@@ -16,22 +16,12 @@ import os
 import re
 import threading
 import time
-from collections import Counter
-from nltk.corpus import stopwords
-from nltk import PorterStemmer
-from spacy import displacy
-from Stemmer import Stemmer
 from word2number import w2n
 
 global NUM_CPUs, MULTIPLY_FACTOR, INPUT_CORPUS_FILE
 NUM_CPUs = multiprocessing.cpu_count()
 MULTIPLY_FACTOR = 1
 
-Stemmer = Stemmer('english')
-stemmer = PorterStemmer()
-
-StopWords = set(stopwords.words("english"))
-extension = set(["http", "https", "reflist", "yes","curlie","publish","page", "isbn", "file", "jpg", "websit", "cite", "title", "journal","publication", "name", "www","url","link", "ftp", "com", "net", "org", "archives", "pdf", "html", "png", "txt", "redirect", "align", "realign", "valign", "nonalign", "malign", "unalign", "salign", "qalign", "halign", "font", "fontsiz", "fontcolor", "backgroundcolor", "background", "style", "center", "text"])
 
 nlp = en_core_web_sm.load()
 
