@@ -319,6 +319,30 @@ def preprocess(directory_in_str,out_directory,docStartIndex,docEndIndex):
     log.info(f"It took {round((time.time() - startTime) / 60, 0)} minutes to pre-process the files in the range [{docStartIndex}:{docEndIndex}].")
 
 
+def preprocess_seq(sequence):
+    #global docNames
+    #for fil in partialList:
+    try:
+        #filename = os.fsdecode(fil)
+        #cleanfile = open(os.path.join(out_directory, filename),'w')
+        #file = open(os.path.join(directory_in_str, filename),'r')
+        #with open(os.path.join(directory_in_str, filename), 'r') as file:
+        sequence = sequence.replace("$.","$0.")
+        line, ner_tags = __applyner(sequence)
+        if len(line) > 0:
+            tokens = __clean_data(line, ner_tags)
+            if len(tokens) > 0:
+                linestr = ""
+                for token in tokens:
+                    linestr += token + " "
+        return linestr
+    except:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        err = "Error occurred while pre-processing sequence. Error is: {0}; {1}".format( str(exc_type), str(exc_value))
+        log.error(err)
+
+    return linestr
+
 if __name__ == "__main__":
     print("Total # of arguments passed to main() is {0}".format(len(sys.argv)))
     if len(sys.argv) < 3:
