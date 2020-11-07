@@ -76,7 +76,7 @@ dataframe['text'] = dataframe['f_path'].apply(extract_business_text)
 
 
 # %%
-pickle.dump(dataframe, open(dataframe_dump_path + 'dataframe.pickle', 'wb'))
+pickle.dump(dataframe, open(dataframe_dump_path, 'wb'))
 
 
 # %%
