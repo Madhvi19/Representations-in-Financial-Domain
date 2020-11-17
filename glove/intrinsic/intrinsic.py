@@ -54,7 +54,7 @@ def generate2dpre():
         pre_w2id[pre_vocab[i]] = i
     # In[39]:
     ######
-    ##Applying PCA to reduce the dimension of the embedding from 300D to 2D.
+    ##Applying t-SNE to reduce the dimension of the embedding from 300D to 2D.
     ######
     tsne = TSNE(n_jobs=12)
     pre_2d = tsne.fit_transform(pre_w)
@@ -84,7 +84,7 @@ def generate2dftEmb():
         w[i] = embedding_map[word]
     # In[6]:
     ######
-    ##Applying PCA to reduce the dimension of the embedding from 300D to 2D.
+    ##Applying t-SNE to reduce the dimension of the embedding from 300D to 2D.
     ######
     tsne = TSNE(n_jobs=12)
     post_2d = tsne.fit_transform(w)
