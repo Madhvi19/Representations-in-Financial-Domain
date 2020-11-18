@@ -1,0 +1,22 @@
+This is a readme file directing you how to execute the task of evaluation of embeddings on Multiclass classification task.
+
+Files present in directory:
+get_business_text.py
+preprocess_text.py
+run.py
+
+Description of what each file does:
+1. get_business_text.py
+It extracts the business section text from all files present in the 10-k data directory. It preprocess the text and then saves it
+as a new column in the dataframe. Thus, each row corresponding to each file now also has the corresponding business text in the dataframe.
+The dataframe is written back to the specified location.
+The directions to run the file and the necessary arguments are present in file itself.
+
+2. preprocess_text.py
+It is the customized code for preprocessing the business text. This is used as a module in above code get_business_text.py.
+Users don't need to run it seperately.
+
+3. run.py
+This is the most important file which actually prepares the data and trains the model on the data. User need to specify the path to 
+the dataframe and the glove dictionary(pre-trained or one trained by us). Output of the file will be the accuracy list in python which has
+test accuracy values for specified number of epochs. User can analyse it and use for plotting to see the results of evaluation.
