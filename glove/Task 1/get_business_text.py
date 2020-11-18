@@ -6,6 +6,7 @@ import pickle
 import pandas as pd
 import os
 import re
+import preprocess_text as pp
 i = 0
 
 # %%
@@ -32,6 +33,7 @@ def extract_business_text(file_name, dir_path):
     
     f = open(file_path)
     text = f.read()
+    
     matches = list(re.finditer(r'(Item|ITEM)\s*[0-9]+[A-Z]*\.', text)) #find all occurrences of this pattern
     #print(len(matches))
     #print(matches)
@@ -58,7 +60,7 @@ def extract_business_text(file_name, dir_path):
         text = "No text found" #indicates no Item found.
     f.close()
     
-    return text
+    return pp.preprocess_seq(text[:900000])
 
 
 # %%
